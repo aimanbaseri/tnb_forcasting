@@ -1,12 +1,9 @@
 streamlit
 pandas
 numpy
-matplotlib
-seaborn
 plotly
 prophet
-statsmodels
 scikit-learn
-requests
-pyarrow
 joblib
+pyarrow
+requests
