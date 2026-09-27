@@ -119,7 +119,7 @@ with st.sidebar:
     <div class="source-box">
     <b>Tujuan:</b> Meramal permintaan elektrik Malaysia 
     untuk membantu perancangan kapasiti grid TNB.<br><br>
-    <b>Model:</b> Facebook Prophet (Time Series)<br>
+    <b>Model:</b> ARIMA (Time Series)<br>
     <b>Sumber:</b> data.gov.my<br>
     <b>Lesen:</b> CC BY 4.0
     </div>
@@ -330,7 +330,7 @@ with tab4:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #888; font-size: 0.85rem;'>
-    ⚡ TNB Load Forecasting System | Python + Prophet + Streamlit + Plotly<br>
+    ⚡ TNB Load Forecasting System | Python + ARIMA + Streamlit + Plotly<br>
     Sumber Data: <b>data.gov.my</b> (Suruhanjaya Tenaga Malaysia) | Lesen: CC BY 4.0
 </div>
 """, unsafe_allow_html=True)
