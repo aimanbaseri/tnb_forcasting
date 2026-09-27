@@ -78,6 +78,20 @@ def get_performance():
         return pd.read_csv('outputs/model_performance.csv', index_col=0)
     return None
 
+
+# ==========================================
+# AUTO-GENERATE FORECAST (untuk Streamlit Cloud)
+# ==========================================
+if not os.path.exists('outputs/forecast_2025_2027.csv'):
+    with st.spinner("🔮 Melatih model buat kali pertama... (2-3 minit). Sila tunggu."):
+        try:
+            from model import train_all_sectors
+            df_raw = load_electricity_data()
+            train_all_sectors(df_raw, forecast_months=36)
+            st.success("✅ Model selesai dilatih!")
+        except Exception as e:
+            st.error(f"❌ Gagal melatih model: {e}")
+
 data = get_data()
 forecasts = get_forecasts()
 performance = get_performance()
@@ -146,6 +160,9 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 
+# ==========================================
+# TAB 1: ANALISIS SEJARAH
+# ==========================================
 with tab1:
     st.subheader("📈 Analisis Penggunaan Elektrik (2018-2024)")
     
@@ -189,11 +206,14 @@ with tab1:
         st.plotly_chart(fig, use_container_width=True)
 
 
+# ==========================================
+# TAB 2: RAMALAN
+# ==========================================
 with tab2:
     st.subheader("🔮 Ramalan Penggunaan Elektrik (2025-2027)")
     
     if forecasts is None:
-        st.warning("⚠️ Sila jalankan `python model.py` terlebih dahulu untuk latih model ramalan.")
+        st.warning("⚠️ Model sedang dilatih. Sila refresh halaman ini selepas 2-3 minit.")
     else:
         if selected_sector:
             fc = forecasts[forecasts['sector'] == selected_sector].sort_values('ds')
@@ -215,43 +235,56 @@ with tab2:
                       title=f'Ramalan - {selected_label}',
                       labels={'value': 'Penggunaan (GWh)', 'ds': 'Tarikh'},
                       color_discrete_map={'Sejarah': '#0066cc', 'Ramalan': '#e74c3c'})
-        last_date_str = hist['ds'].max().strftime('%Y-%m-%d')
-# Tukar tarikh kepada Unix timestamp (milliseconds) untuk elak bug Plotly
-last_date_ms = int(hist['ds'].max().timestamp() * 1000)
-
-fig.add_vline(
-    x=last_date_ms,
-    line_dash="dash",
-    line_color="gray",
-    line_width=2
-)
-
-# Tambah anotasi sebagai teks berasingan (untuk elak bug)
-fig.add_annotation(
-    x=last_date_ms,
-    y=1,
-    yref="paper",
-    text="Mula Ramalan",
-    showarrow=False,
-    font=dict(color="gray", size=12),
-    xanchor="left",
-    yanchor="bottom"
-)
-fig.update_layout(height=500, hovermode='x unified')
-st.plotly_chart(fig, use_container_width=True)
-st.markdown("### 📊 Ringkasan Ramalan Tahunan")
-col_a, col_b, col_c = st.columns(3)        
-for col, year in zip([col_a, col_b, col_c], [2025, 2026, 2027]):
+        
+        # Tukar tarikh ke Unix timestamp (untuk elak bug Plotly)
+        last_date_ms = int(hist['ds'].max().timestamp() * 1000)
+        last_forecast_ms = int(fc['ds'].max().timestamp() * 1000)
+        
+        # Zon berlorek untuk bahagian ramalan
+        fig.add_vrect(
+            x0=last_date_ms,
+            x1=last_forecast_ms,
+            fillcolor="red",
+            opacity=0.08,
+            layer="below",
+            line_width=0,
+            annotation_text="🔮 Zon Ramalan",
+            annotation_position="top left",
+            annotation=dict(font_size=11, font_color="#e74c3c")
+        )
+        
+        # Garis pemisah
+        fig.add_vline(
+            x=last_date_ms,
+            line_dash="dash",
+            line_color="#e74c3c",
+            line_width=1.5
+        )
+        
+        fig.update_layout(
+            height=500,
+            hovermode='x unified',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("### 📊 Ringkasan Ramalan Tahunan")
+        col_a, col_b, col_c = st.columns(3)
+        
+        for col, year in zip([col_a, col_b, col_c], [2025, 2026, 2027]):
             year_total = fc[fc['ds'].dt.year == year]['yhat'].sum()
             with col:
                 st.metric(f"Ramalan {year}", f"{year_total:,.0f} GWh")
 
 
+# ==========================================
+# TAB 3: PRESTASI MODEL
+# ==========================================
 with tab3:
     st.subheader("🏆 Prestasi Model Ramalan")
     
     if performance is None:
-        st.warning("⚠️ Jalankan `python model.py` dahulu.")
+        st.warning("⚠️ Model sedang dilatih. Sila refresh halaman ini selepas 2-3 minit.")
     else:
         st.write("**Metrik Ketepatan Setiap Sektor**")
         st.dataframe(performance, use_container_width=True)
@@ -271,6 +304,9 @@ with tab3:
             st.plotly_chart(fig, use_container_width=True)
 
 
+# ==========================================
+# TAB 4: DATA
+# ==========================================
 with tab4:
     st.subheader("📋 Data Mentah")
     
